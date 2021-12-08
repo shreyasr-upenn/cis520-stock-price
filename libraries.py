@@ -19,7 +19,7 @@ from sklearn.compose import make_column_transformer
 from sklearn.metrics import mean_squared_error, r2_score, accuracy_score
 
 from sklearn.preprocessing import PolynomialFeatures, MinMaxScaler
-from sklearn.linear_model import LinearRegression, Ridge
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
 from sklearn.pipeline import make_pipeline
 
 from sklearn import metrics
@@ -32,6 +32,7 @@ from sklearn.ensemble import RandomForestRegressor
 import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset,DataLoader
+import torch.optim as optim
 
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense

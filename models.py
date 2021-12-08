@@ -43,6 +43,34 @@ apple = Apple()
 tesla = Tesla()
 jpm = JPM()
 
+
+class ANN(nn.Module):
+    def __init__(self):
+        super(ANN,self).__init__()
+        self.linear1 = nn.Linear(in_features=30, out_features= 75, bias=True)
+        self.linear2 = nn.Linear(in_features=75,out_features=100,bias=True)
+        self.linear3 = nn.Linear(in_features=100, out_features=100, bias=True)
+        self.linear4 = nn.Linear(in_features=100, out_features=10, bias=True)
+        self.linear5 = nn.Linear(in_features=10, out_features=1, bias=True)
+        self.relu = nn.ReLU()
+
+    def forward(self,x):
+        # x = torch.flatten(x,1)
+        x = self.linear1(x)
+        x = self.relu(x)
+        x = self.linear2(x)
+        x = self.relu(x)
+        x = self.linear3(x)
+        x = self.relu(x)
+        x = self.linear4(x)
+        x = self.relu(x)
+        x = self.linear5(x)
+        # x = self.relu(x)
+        return x
+
+
+
+
 def plot_model(model, X_test, y_test,test_date):
     plt.figure(figsize=(10,5))
     plt.plot(y_test, color = 'r', label = 'Actual Value registered in NASDAQ as per Yahoo! Finance')
@@ -77,8 +105,115 @@ def LinearRegressionModel(ticker,X_train, y_train, X_test, y_test,test_date):
         jpm.metrics('LinearReg', RMSE, MAE, R2)
 
 def RFRModel(ticker,X_train, y_train, X_test, y_test,test_date):
-    return 0
+    for i in [5,10,20,50,100]:
+        print(f'--------------- n_estimator = {i}------------')
+        rfr = RandomForestRegressor(n_estimators=i, random_state=0,)
+        rfr.fit(X_train,y_train)
+        plot_model(rfr,X_test,y_test,test_date)
+        MAE, RMSE, R2 = compute_metrics(y_test, rfr.predict(X_test))
+
+        if ticker == 'AAPL':
+            apple.metrics('RFR', RMSE, MAE, R2)
+        elif ticker == 'TSLA':
+            tesla.metrics('RFR', RMSE, MAE, R2)
+        elif ticker == 'JPM':
+            jpm.metrics('RFR', RMSE, MAE, R2)
+
+def LassoModel(ticker,X_train, y_train, X_test, y_test,test_date):
+    for i in [1,0.1,0.01,0.001]:
+        print(f'--------------- alpha = {i}------------')
+        lass = Lasso(alpha=i)
+        lass.fit(X_train,y_train)
+        plot_model(lass,X_test,y_test,test_date)
+        MAE, RMSE, R2 = compute_metrics(y_test, lass.predict(X_test))
+
+        if ticker == 'AAPL':
+            apple.metrics('RFR', RMSE, MAE, R2)
+        elif ticker == 'TSLA':
+            tesla.metrics('RFR', RMSE, MAE, R2)
+        elif ticker == 'JPM':
+            jpm.metrics('RFR', RMSE, MAE, R2)
+
+
+
+def NeuralNetwork(ticker,X_train, y_train, X_test, y_test,test_date):
+    
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+    train_tensor = torch.tensor(X_train)
+    test_tensor = torch.tensor(X_test)
+    train_close_tensor = torch.tensor(y_train)
+    test_close_tensor = torch.tensor(y_test)
+    train_tensor_dataset = TensorDataset(train_tensor,train_close_tensor)
+    test_tensor_dataset = TensorDataset(test_tensor,test_close_tensor)
+    train_loader = DataLoader(train_tensor_dataset,batch_size=25,shuffle=False)
+    test_loader = DataLoader(test_tensor_dataset,batch_size=25,shuffle=False)
+    
+    nn_model = ANN()
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(nn_model.parameters(), lr = 1e-3)
+
+    overall_step = 0
+
+    epochs = 100
+
+    train_loss = []
+    val_loss = []
+
+    for epoch in range(epochs):  # loop over the dataset multiple times
+        running_loss = 0
+        acc = 0
+        total = 0
+        num_batches = 0
+        nn_model.train()
+        for _,(X,y) in enumerate(train_loader):
+                    
+            optimizer.zero_grad()
+            X = X.float()
+            # print(X)
+            y_pred = nn_model.forward(X)
+            # print(y_pred)
+            y = y.float()
+            loss = criterion(y_pred, y)
+            running_loss += loss.item()
+            #Backprop
+            loss.backward()
+            optimizer.step()
+            num_batches += 1
+        
+        running_loss = running_loss / num_batches
+        train_loss.append(running_loss)
+        
+        running_val_loss = 0 
+        num_batches = 0
+        nn_model.eval()
+        for _,(X,y) in enumerate(test_loader):
+            X = X.float()
+            y_pred = nn_model(X).to(device)
+            y = y.float()
+            loss = criterion(y_pred, y)
+            running_val_loss += loss.item()
+            num_batches += 1
+
+        running_val_loss = running_val_loss/num_batches
+        val_loss.append(running_val_loss)
+
+        # print("#################################################################################")
+        print(f'epoch : {epoch} train_loss : {train_loss[epoch]}, val_loss: {val_loss[epoch]}')
+        # print("#################################################################################")
     
     
+    plt.plot(test_date,y_test,color='blue')
+    y_pred = nn_model(test_tensor.float())
+    plt.plot(test_date,y_pred.detach().numpy(),color='red')
+    
+    MAE, RMSE, R2 = compute_metrics(y_test,y_pred.detach().numpy())
+    
+    if ticker == 'AAPL':
+        apple.metrics('NN', RMSE, MAE, R2)
+    elif ticker == 'TSLA':
+        tesla.metrics('NN', RMSE, MAE, R2)
+    elif ticker == 'JPM':
+        jpm.metrics('NN', RMSE, MAE, R2)
 
 
