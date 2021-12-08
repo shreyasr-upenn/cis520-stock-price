@@ -16,17 +16,16 @@ import sklearn.model_selection as model_selection
 from sklearn.pipeline import make_pipeline
 from sklearn.compose import make_column_transformer
 
-from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score, accuracy_score
 
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures, MinMaxScaler
+from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.pipeline import make_pipeline
 
 from sklearn import metrics
 import math
 
-from sklearn.linear_model import Ridge
+from sklearn.model_selection import train_test_split
 
 from sklearn.ensemble import RandomForestRegressor
 

@@ -1,6 +1,8 @@
 # Dataset entry
 
 import os
+
+from numpy.core.arrayprint import format_float_scientific
 os.system("python libraries.py")
 from libraries import *
 
@@ -10,9 +12,11 @@ def dataset_to_csv_1(ticker):
 
     dataset = yf.download(ticker,'2010-01-01', '2021-12-01')
     filename = '%s_datafile_1.csv' % (ticker)
+    dataset['Date'] = dataset.index
     new_dataset = pd.DataFrame()
+    new_dataset['Date'] = dataset['Date']
     new_dataset['Close'] = dataset['Close']
-    for i in range(50):
+    for i in range(20,50):
         column_name = 'Shift_%d' % (int(i))
         new_dataset[column_name] = dataset['Close'].shift(int(i))
     new_dataset.dropna()
@@ -44,6 +48,7 @@ def dataset_to_csv_2(ticker):
     
     new_dataset['SMA_10'] = dataset['Close'].rolling(window=10).mean()
 
+    weights = np.arange(1,11)
     new_dataset['WMA_10'] = dataset['Close'].rolling(10).apply(lambda prices: np.dot(prices, weights)/weights.sum(), raw=True)
     
     momentum = dataset['Close'].shift().rolling(10).apply(lambda prices: prices[9] - prices[0], raw=True)
@@ -71,9 +76,9 @@ def dataset_to_csv_2(ticker):
 
     new_dataset['MACD'] = (macd) - ( macd.ewm(span=9, adjust=False).mean() )
     
-    new_dataset['wr_14'] = get_wr(dataset['High'], dataset['Low'], dataset['Close'], 10)
+    new_dataset['wr_14'] = get_wr(dataset['High'].shift(10), dataset['Low'].shift(10), dataset['Close'].shift(10), 10)
 
-    new_dataset['CCI'] = CCI(dataset['Close'], dataset['High'], dataset['Low'], 10, 0.015)
+    new_dataset['CCI'] = CCI(dataset['Close'].shift(10), dataset['High'].shift(10), dataset['Low'].shift(10), 10, 0.015)
 
     new_dataset.dropna()
     temp = new_dataset
@@ -96,3 +101,28 @@ def plot_datasets(dataset):
     plt.title('Correlation between the generated features and closing price between JPMORGAN CHASE & CO.')
     # Plots the graphs
 
+def test_train_splitting_scaling(dataset):
+    dataset = dataset.dropna()
+    X = dataset.drop(['Date','Close'], axis=1).to_numpy()
+    # X = dataset.drop(['Date','Close'], axis=1)
+    # print(X)
+    # exit()
+    Y = dataset['Close'].to_numpy()
+    X_train, X_test, y_train, y_test = train_test_split(X,Y,test_size=0.2,random_state=None,shuffle=False)
+
+    minmax = MinMaxScaler()
+    X_train = minmax.fit_transform(X_train,y_train)
+    X_test = minmax.transform(X_test)
+    test_date = dataset.index[-1*len(y_test):]
+    return X_train, X_test, y_train, y_test,test_date
+
+def get_Tensor_Dataloader(X_train, X_test, y_train, y_test):
+    train_tensor = torch.tensor(X_train)
+    test_tensor = torch.tensor(X_test)
+    train_close_tensor = torch.tensor(y_train)
+    test_close_tensor = torch.tensor(y_test)
+    train_tensor_dataset = TensorDataset(train_tensor,train_close_tensor)
+    test_tensor_dataset = TensorDataset(test_tensor,test_close_tensor)
+    train_loader = DataLoader(train_tensor_dataset,batch_size=25,shuffle=False)
+    test_loader = DataLoader(test_tensor_dataset,batch_size=25,shuffle=False)
+    return train_loader, test_loader
