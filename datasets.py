@@ -16,7 +16,7 @@ def dataset_to_csv_1(ticker):
     new_dataset = pd.DataFrame()
     new_dataset['Date'] = dataset['Date']
     new_dataset['Close'] = dataset['Close']
-    for i in range(20,50):
+    for i in range(1,51):
         column_name = 'Shift_%d' % (int(i))
         new_dataset[column_name] = dataset['Close'].shift(int(i))
     new_dataset.dropna()
@@ -101,19 +101,53 @@ def plot_datasets(dataset):
     plt.title('Correlation between the generated features and closing price between JPMORGAN CHASE & CO.')
     # Plots the graphs
 
-def test_train_splitting_scaling(dataset):
+# For LSTM model
+def create_dataset(in_data, days=1):
+    X=[]
+    Y=[]
+    for i in range(len(in_data)-days-1):
+        temp_X = in_data[i:i+days,0]
+        temp_Y = in_data[i+days,0]
+
+        X.append(temp_X)
+        Y.append(temp_Y)
+    return np.array(X), np.array(Y).reshape((-1,1))
+
+def test_train_splitting_scaling(dataset,lstm_flag = False):
     dataset = dataset.dropna()
     X = dataset.drop(['Date','Close'], axis=1).to_numpy()
     # X = dataset.drop(['Date','Close'], axis=1)
     # print(X)
     # exit()
     Y = dataset['Close'].to_numpy()
-    X_train, X_test, y_train, y_test = train_test_split(X,Y,test_size=0.2,random_state=None,shuffle=False)
-
     minmax = MinMaxScaler()
+    if lstm_flag == True:
+        minmax = MinMaxScaler(feature_range=(0,1))
+        temp_dataset = pd.DataFrame()
+        temp_dataset = dataset['Close'].reset_index(drop=True)
+        close_dataset = pd.DataFrame()
+        close_dataset = minmax.fit_transform(np.array(temp_dataset).reshape(-1,1))
+        X,Y = create_dataset(close_dataset,days=50)
+        # print(temp_dataset.head)
+        # temp_dataset = temp_dataset.reset_index()
+        # temp_dataset[temp_dataset.columns] = minmax.fit_transform(temp_dataset[temp_dataset.columns])
+        # X = temp_dataset.drop(['Date','Close'], axis=1).to_numpy()
+        # temp_dataset = minmax.fit_transform(temp_dataset)
+        # X = minmax.fit_transform(X)
+        print("--- Creatig datasets ---")
+        # print(X.shape)
+        # Y = dataset['Close'].to_numpy()
+        # Y = minmax.transform(Y.reshape(-1,1))
+        print(X.shape)
+        print(Y.shape)
+        X_train, X_test, y_train, y_test = train_test_split(X,Y,test_size=0.05,random_state=None,shuffle=False)
+        test_date = dataset.index[-1*len(y_test):]
+        return minmax, X_train, X_test, y_train, y_test,test_date
+    X_train, X_test, y_train, y_test = train_test_split(X,Y,test_size=0.05,random_state=None,shuffle=False)
     X_train = minmax.fit_transform(X_train,y_train)
     X_test = minmax.transform(X_test)
     test_date = dataset.index[-1*len(y_test):]
+
     return X_train, X_test, y_train, y_test,test_date
 
 def get_Tensor_Dataloader(X_train, X_test, y_train, y_test):

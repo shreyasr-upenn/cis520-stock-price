@@ -47,7 +47,7 @@ jpm = JPM()
 class ANN(nn.Module):
     def __init__(self):
         super(ANN,self).__init__()
-        self.linear1 = nn.Linear(in_features=30, out_features= 75, bias=True)
+        self.linear1 = nn.Linear(in_features=50, out_features= 75, bias=True)
         self.linear2 = nn.Linear(in_features=75,out_features=100,bias=True)
         self.linear3 = nn.Linear(in_features=100, out_features=100, bias=True)
         self.linear4 = nn.Linear(in_features=100, out_features=10, bias=True)
@@ -73,8 +73,8 @@ class ANN(nn.Module):
 
 def plot_model(model, X_test, y_test,test_date):
     plt.figure(figsize=(10,5))
-    plt.plot(y_test, color = 'r', label = 'Actual Value registered in NASDAQ as per Yahoo! Finance')
-    plt.plot(model.predict(X_test), color = 'g', label = 'Values Predicted by Model')
+    plt.plot(test_date, y_test, color = 'r', label = 'Actual Value registered as per Yahoo! Finance')
+    plt.plot(test_date, model.predict(X_test), color = 'g', label = 'Values Predicted by Model')
     plt.xlabel('')
     plt.ylabel('The Price of the Stock in dollars')
     plt.legend()
@@ -128,11 +128,11 @@ def LassoModel(ticker,X_train, y_train, X_test, y_test,test_date):
         MAE, RMSE, R2 = compute_metrics(y_test, lass.predict(X_test))
 
         if ticker == 'AAPL':
-            apple.metrics('RFR', RMSE, MAE, R2)
+            apple.metrics('Lasso', RMSE, MAE, R2)
         elif ticker == 'TSLA':
-            tesla.metrics('RFR', RMSE, MAE, R2)
+            tesla.metrics('Lasso', RMSE, MAE, R2)
         elif ticker == 'JPM':
-            jpm.metrics('RFR', RMSE, MAE, R2)
+            jpm.metrics('Lasso', RMSE, MAE, R2)
 
 
 
@@ -142,8 +142,8 @@ def NeuralNetwork(ticker,X_train, y_train, X_test, y_test,test_date):
 
     train_tensor = torch.tensor(X_train)
     test_tensor = torch.tensor(X_test)
-    train_close_tensor = torch.tensor(y_train)
-    test_close_tensor = torch.tensor(y_test)
+    train_close_tensor = torch.tensor(y_train.reshape(-1,1))
+    test_close_tensor = torch.tensor(y_test.reshape(-1,1))
     train_tensor_dataset = TensorDataset(train_tensor,train_close_tensor)
     test_tensor_dataset = TensorDataset(test_tensor,test_close_tensor)
     train_loader = DataLoader(train_tensor_dataset,batch_size=25,shuffle=False)
@@ -203,9 +203,9 @@ def NeuralNetwork(ticker,X_train, y_train, X_test, y_test,test_date):
         # print("#################################################################################")
     
     
-    plt.plot(test_date,y_test,color='blue')
+    plt.plot(test_date,y_test,color = 'r', label = 'Actual Value registered as per Yahoo! Finance')
     y_pred = nn_model(test_tensor.float())
-    plt.plot(test_date,y_pred.detach().numpy(),color='red')
+    plt.plot(test_date,y_pred.detach().numpy(), color = 'g', label = 'Values Predicted by Model')
     
     MAE, RMSE, R2 = compute_metrics(y_test,y_pred.detach().numpy())
     
@@ -216,4 +216,68 @@ def NeuralNetwork(ticker,X_train, y_train, X_test, y_test,test_date):
     elif ticker == 'JPM':
         jpm.metrics('NN', RMSE, MAE, R2)
 
+
+def LSTM_Model (ticker, minmax, X_train, y_train, X_test, y_test,test_date):
+
+    # Define Model
+
+    model=Sequential()
+    model.add(LSTM(50,return_sequences=True,input_shape=(50,1)))
+    # model.add(Dropout(0.2))
+    model.add(LSTM(50,return_sequences=True))
+    # model.add(Dropout(0.2))
+    model.add(LSTM(50))
+    model.add(Dense(1))
+    model.compile(loss='mean_squared_error',optimizer='adam')
+    model.summary()
+
+    model.reset_states()
+    model.reset_metrics()
+    history = model.fit(X_train,y_train,validation_data=(X_test,y_test),epochs=100,batch_size=64,verbose=1)
+    y_test_pred = model.predict(X_test)
+    
+    # print(y_test_pred.shape)
+    y_test_pred = minmax.inverse_transform(y_test_pred.reshape((y_test_pred.shape[0],y_test_pred.shape[1])))
+
+    plt.plot(test_date,minmax.inverse_transform(y_test),color='r', label='Actual')
+    plt.plot(test_date, y_test_pred,color = 'g', label = 'Prediction')
+    plt.ylabel('Price in USD')
+    plt.xlabel('Date')
+    plt.legend()
+    plt.show()
+
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('model train vs Test loss')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'validation'], loc='upper right')
+    
+    MAE, RMSE, R2 = compute_metrics(minmax.inverse_transform(y_test),y_test_pred)
+    
+    if ticker == 'AAPL':
+        apple.metrics('LSTM', RMSE, MAE, R2)
+    elif ticker == 'TSLA':
+        tesla.metrics('LSTM', RMSE, MAE, R2)
+    elif ticker == 'JPM':
+        jpm.metrics('LSTM', RMSE, MAE, R2)
+
+
+def tpotregressor(ticker,X_train, y_train, X_test, y_test,test_date):
+    tpot = TPOTRegressor(generations= 10, population_size = 50, verbosity = 2)
+
+    tpot.fit(X_train,y_train)
+    print(tpot.score(X_test,y_test))
+
+    plot_model(tpot, X_test,y_test,test_date)
+    # print(lr.predict(X_test))
+    
+    MAE, RMSE, R2 = compute_metrics(y_test, tpot.predict(X_test))
+
+    if ticker == 'AAPL':
+        apple.metrics('AutoML', RMSE, MAE, R2)
+    elif ticker == 'TSLA':
+        tesla.metrics('AutoML', RMSE, MAE, R2)
+    elif ticker == 'JPM':
+        jpm.metrics('AutoML', RMSE, MAE, R2)
 

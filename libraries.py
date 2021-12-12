@@ -39,5 +39,6 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import LSTM
 from tensorflow.keras.layers import Dropout
 
+from tpot import TPOTRegressor
 
 
