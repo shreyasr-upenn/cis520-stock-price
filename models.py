@@ -263,7 +263,7 @@ def LSTM_Model (ticker, minmax, X_train, y_train, X_test, y_test,test_date):
         jpm.metrics('LSTM', RMSE, MAE, R2)
 
 
-def tpotregressor(ticker,X_train, y_train, X_test, y_test,test_date):
+def TPOT_model(ticker,X_train, y_train, X_test, y_test,test_date):
     tpot = TPOTRegressor(generations= 10, population_size = 50, verbosity = 2)
 
     tpot.fit(X_train,y_train)
