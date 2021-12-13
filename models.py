@@ -206,6 +206,12 @@ def NeuralNetwork(ticker,X_train, y_train, X_test, y_test,test_date):
     plt.plot(test_date,y_test,color = 'r', label = 'Actual Value registered as per Yahoo! Finance')
     y_pred = nn_model(test_tensor.float())
     plt.plot(test_date,y_pred.detach().numpy(), color = 'g', label = 'Values Predicted by Model')
+    plt.xlabel('')
+    plt.ylabel('The Price of the Stock in dollars')
+    plt.legend()
+    plt.show()
+
+
     
     MAE, RMSE, R2 = compute_metrics(y_test,y_pred.detach().numpy())
     

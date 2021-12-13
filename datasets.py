@@ -25,6 +25,8 @@ def dataset_to_csv_1(ticker):
     return temp
 
 
+
+
 def get_wr(high, low, close, lookback):
     highh = high.rolling(lookback).max() 
     lowl = low.rolling(lookback).min()
