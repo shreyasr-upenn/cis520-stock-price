@@ -210,6 +210,9 @@ def NeuralNetwork(ticker,X_train, y_train, X_test, y_test,test_date):
     plt.ylabel('The Price of the Stock in dollars')
     plt.legend()
     plt.show()
+
+
+    
     MAE, RMSE, R2 = compute_metrics(y_test,y_pred.detach().numpy())
     
     if ticker == 'AAPL':
